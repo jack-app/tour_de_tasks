@@ -46,3 +46,7 @@ app.*.map.json
 
 .fvm/
 build/
+
+# 環境依存
+
+.vscode/settings.json
