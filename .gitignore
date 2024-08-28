@@ -44,7 +44,7 @@ app.*.map.json
 
 #fvm
 
-.fvm/
+.fvm/flutter_sdk
 build/
 
 # 環境依存
