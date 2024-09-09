@@ -44,9 +44,11 @@ app.*.map.json
 
 #fvm
 
-.fvm/flutter_sdk
 build/
 
 # 環境依存
 
 .vscode/settings.json
+
+# FVM Version Cache
+.fvm/
