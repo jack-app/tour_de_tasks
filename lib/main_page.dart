@@ -5,24 +5,26 @@ import 'goal_page.dart';
 import 'user_data.dart';
 import 'app_data.dart' as app;
 
-
 // このクラスのインスタンスをwidget間でリレーさせて，包括的な操作を用意にする
-class WidgetsController {
+class MainPageController {
   bool Function()? _updateProgressBar; // falseが返された場合それ以上の更新を行うべきでない
   bool Function()? _updateSlideShow; // falseが返された場合それ以上の更新を行うべきでない
   Timer? _timer;
 
-  WidgetsController._internal();
+  MainPageController._internal();
 
-  factory WidgetsController() {
-    WidgetsController controller =  WidgetsController._internal();
-    controller._timer = Timer.periodic(const Duration(seconds: 1), controller.onEverySecond);
+  factory MainPageController() {
+    MainPageController controller = MainPageController._internal();
+    controller._timer =
+        Timer.periodic(const Duration(seconds: 1), controller.onEverySecond);
     return controller;
   }
 
   void onEverySecond(Timer timer) {
     // 初期化が終わっていない場合は何もしない
-    if (_updateProgressBar == null || _updateSlideShow == null) { return; }
+    if (_updateProgressBar == null || _updateSlideShow == null) {
+      return;
+    }
 
     bool timerShouldBeAlive = true;
     timerShouldBeAlive &= _updateProgressBar!();
@@ -61,7 +63,6 @@ class WidgetsController {
   }
 }
 
-
 // Widgetの設定（ステートに依存しない）を行う．
 // sample.dartを参考にすると良い
 class MainPage extends StatefulWidget {
@@ -70,8 +71,9 @@ class MainPage extends StatefulWidget {
   @override
   State<MainPage> createState() => _MainPageState();
 }
+
 class _MainPageState extends State<MainPage> {
-  WidgetsController? controller;
+  MainPageController? controller;
 
   @override
   void initState() {
@@ -79,7 +81,7 @@ class _MainPageState extends State<MainPage> {
     // アプリの中断時にこのページから起動するためにUserDataのpageを設定
     UserData().page = app.Page.main;
     // 最初のwidgetsControllerのインスタンス化はここで行う．以降はこのインスタンスを受け渡す．
-    controller = WidgetsController();
+    controller = MainPageController();
   }
 
   @override
@@ -87,41 +89,34 @@ class _MainPageState extends State<MainPage> {
     // ここでwidgetを組み合わせる
     // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Main Page'),
-      ),
-      body: Column(
-        children: <Widget>[
-          SlideShow(controller: controller!),
-          ControlPanel(controller: controller!),
-          ElevatedButton(
-            onPressed: () {
-              // ページ遷移はこんな感じ
-              Navigator
-              .of(context)
-              .pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => const GoalPage()
-                )
-              );
-            }, 
-            child: const Text('遷移')
-          ),
-        ],
-      )
-    );
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Main Page'),
+        ),
+        body: Column(
+          children: <Widget>[
+            SlideShow(controller: controller!),
+            ControlPanel(controller: controller!),
+            ElevatedButton(
+                onPressed: () {
+                  // ページ遷移はこんな感じ
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (context) => const GoalPage()));
+                },
+                child: const Text('遷移')),
+          ],
+        ));
   }
 }
 
-
 class SlideShow extends StatefulWidget {
-  final WidgetsController controller;
+  final MainPageController controller;
   const SlideShow({super.key, required this.controller});
 
   @override
   State<SlideShow> createState() => _SlideShowState();
 }
+
 class _SlideShowState extends State<SlideShow> {
   String location = app.cities[0];
 
@@ -129,7 +124,8 @@ class _SlideShowState extends State<SlideShow> {
   void initState() {
     super.initState();
     widget.controller._updateSlideShow = () {
-      if (mounted) { // widgetが表示されているかどうか
+      if (mounted) {
+        // widgetが表示されているかどうか
         setState(() {
           location = widget.controller.calcLocation();
         });
@@ -146,10 +142,8 @@ class _SlideShowState extends State<SlideShow> {
   }
 }
 
-
-
 class ControlPanel extends StatelessWidget {
-  final WidgetsController controller;
+  final MainPageController controller;
   const ControlPanel({super.key, required this.controller});
 
   @override
@@ -165,17 +159,15 @@ class ControlPanel extends StatelessWidget {
   }
 }
 
-
-
 class ProgressBar extends StatefulWidget {
-  final WidgetsController controller;
+  final MainPageController controller;
   const ProgressBar({super.key, required this.controller});
 
   @override
   State<ProgressBar> createState() => _ProgressBarState();
 }
-class _ProgressBarState extends State<ProgressBar> {
 
+class _ProgressBarState extends State<ProgressBar> {
   int _countUpForTest = 0;
   double passedDistanceKm = 0.0;
 
@@ -183,7 +175,8 @@ class _ProgressBarState extends State<ProgressBar> {
   void initState() {
     super.initState();
     widget.controller._updateProgressBar = () {
-      if (mounted) { // widgetが表示されているかどうか
+      if (mounted) {
+        // widgetが表示されているかどうか
         setState(() {
           _countUpForTest++;
           passedDistanceKm = widget.controller.calcDistanceKm();
