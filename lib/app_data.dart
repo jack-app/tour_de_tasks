@@ -3,7 +3,7 @@ const maxSpeedKmPerSec = 0.09;
 
 // city: distance from Paris in km
 const Map<String, double> cities = {
-  'Paris': 0,
+  'Paris': 1,
   'Angouleme': 16.2,
   'Osny': 41.5,
   'Beauvais': 89.9,
