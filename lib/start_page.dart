@@ -75,6 +75,7 @@ class _StartPageState extends State<StartPage> {
                     UserData().goalDistanceKm = app.cities[selectedCity]!;
                     UserData().running = true;
                     LapRepository().reset();
+                    LapRepository().run();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey,

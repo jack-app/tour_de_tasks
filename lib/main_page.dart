@@ -26,6 +26,7 @@ class MainPageController {
 
   factory MainPageController() {
     // 中断からの復帰で状況を復元する
+    developer.log('controller required', name: 'mainPageController');
     if (_instance._userData.running) {
       _instance.startTimer();
     } else {
@@ -42,19 +43,20 @@ class MainPageController {
   void startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 600), onEveryFrame);
+    developer.log('timer started', name: 'mainPageController');
   }
 
   void stopTimer() {
     _timer?.cancel();
+    developer.log('timer stopped', name: 'mainPageController');
   }
 
   void onEveryFrame(Timer timer) async {
     // 初期化が終わっていない場合は何もしない
-
     if (_updateProgressBar == null ||
         _updateSlideShow == null ||
         _autoTransition == null) {
-      developer.log('onEverySecond was called but initializing not completed',
+      developer.log('onEveryFrame was called but initializing not completed',
           name: 'onEverySecond');
       return;
     }
