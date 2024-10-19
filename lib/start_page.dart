@@ -35,20 +35,47 @@ class _StartPageState extends State<StartPage> {
       ),
       body: Column(
         children: <Widget>[
-          const CitySelector(),
-          ElevatedButton(
-            onPressed: () {
-              // ページ遷移はこんな感じ
-              Navigator
-              .of(context)
-              .pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => const MainPage()
-                )
-              );
-            }, 
-            child: const Text('Start')
+          CitySelector(key:citySelectorKey),
+          Container(
+            width: double.infinity, 
+            height: 80, 
+            color: Colors.black, // 背景色を黒
+            alignment: Alignment.center, // テキストを中央
+            child: Text('都市:  ${selectedCity}   距離:  ${app.cities[selectedCity]!} km   ',style:const TextStyle(color: Colors.white),),
           ),
+          Container(
+            width: double.infinity, // 横いっぱいに広げる
+            height: 80, 
+            color: Colors.grey[800], // 背景色
+            alignment: Alignment.center, // テキストを中央
+            child: Text('目安所要時間: ${(app.cities[selectedCity]! / app.initialSpeedKmPerSec).toStringAsFixed(2)}  ',style:const TextStyle(color: Colors.white),),
+          ),
+          Spacer(flex: 1),
+          SizedBox(
+            width: 500, 
+            height: 100, 
+            
+            child: ElevatedButton(
+              onPressed: () {
+                // ページ遷移はこんな感じ
+                Navigator
+                .of(context)
+                .pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const MainPage()
+                  )
+                );
+              }, 
+              
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey, 
+                
+              ),
+              child: const Text('旅に出る!',style: TextStyle(color: Colors.white), )
+            ),
+          ),
+          Spacer(flex: 1)
+            
         ],
       )
     );
