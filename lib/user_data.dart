@@ -1,10 +1,7 @@
-import 'dart:ffi';
-
 import 'package:shared_preferences/shared_preferences.dart';
 // 用法はここに https://pub.dev/packages/shared_preferences
 // ~~import 'package:sqflite/sqflite.dart'; -> 非対応らしい
 // ~~用法はここに https://pub.dev/packages/sqflite
-import 'package:sqlite3/open.dart';
 import 'package:sqlite3/sqlite3.dart';
 // 用法はここに https://pub.dev/packages/sqlite3
 import 'app_data.dart';
@@ -149,11 +146,9 @@ class LapRepository {
   }
 
   Future<Lap?> getLast() async {
-    var result = await db.query(tableName,
-        orderBy: 'whenEpochSec DESC', limit: 1, offset: 0);
-    if (result.isEmpty) return null;
+    var result = db
+        .select('SELECT * FROM $tableName ORDER BY whenEpochSec DESC LIMIT 1');
     return Lap(
-        whenEpochSec: result[0]['whenEpochSec'] as int,
-        act: result[0]['act'] as String);
+        whenEpochSec: result.first['whenEpochSec'], act: result.first['act']);
   }
 }

@@ -22,7 +22,6 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   final UserData _userData = UserData();
   late Future<void> _userDataPreparation;
-  late Future<void> _lapRepoPreparation;
 
   @override
   void initState() {
