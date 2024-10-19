@@ -18,20 +18,34 @@ import 'app_data.dart' as app;
 
 // このクラスのインスタンスをwidget間でリレーさせて，包括的な操作を用意にする
 class MainPageController {
+  final LapRepository _lapRepo = LapRepository();
+  final UserData _userData = UserData();
+
+  MainPageController._internal();
+  static final MainPageController _instance = MainPageController._internal();
+
+  factory MainPageController() {
+    // 中断からの復帰で状況を復元する
+    if (_instance._userData.running) {
+      _instance.startTimer();
+    } else {
+      _instance.stopTimer();
+    }
+    return _instance;
+  }
+
   Future<bool> Function()? _updateProgressBar; // falseが返された場合それ以上の更新を行うべきでない
   Future<bool> Function()? _updateSlideShow; // falseが返された場合それ以上の更新を行うべきでない
   Future<bool> Function()? _autoTransition; // falseが返された場合それ以上の更新を行うべきでない
   Timer? _timer;
 
-  MainPageController._internal();
+  void startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(milliseconds: 600), onEveryFrame);
+  }
 
-  final LapRepository _lapRepo = LapRepository();
-  final UserData _userData = UserData();
-
-  factory MainPageController() {
-    MainPageController controller = MainPageController._internal();
-    controller.run();
-    return controller;
+  void stopTimer() {
+    _timer?.cancel();
   }
 
   void onEveryFrame(Timer timer) async {
@@ -51,7 +65,7 @@ class MainPageController {
         .every((result) => result);
 
     if (!timerShouldBeAlive) {
-      timer.cancel();
+      stopTimer();
     }
   }
 
@@ -99,12 +113,8 @@ class MainPageController {
   }
 
   Future<double> calcRemainingDistanceKm() async {
-    var initialRemainingDistanceKm = app.cities[_userData.startCity];
-    if (initialRemainingDistanceKm == null) {
-      throw Exception('Invalid startCity');
-    }
     final passedDistanceKm = await calcPassedDistanceKm();
-    return max(0, initialRemainingDistanceKm - passedDistanceKm);
+    return max(0, _userData.goalDistanceKm - passedDistanceKm);
   }
 
   Future<String> calcLocation() async {
@@ -117,7 +127,7 @@ class MainPageController {
 
   Future<double> calcProgress() async {
     final passedDistanceKm = await calcPassedDistanceKm();
-    return passedDistanceKm / app.cities[_userData.startCity]!;
+    return passedDistanceKm / _userData.goalDistanceKm;
   }
 
   void rest() {
@@ -126,16 +136,15 @@ class MainPageController {
       _userData.confPassedDistanceKm = distanceKm;
       _lapRepo.rest();
     });
-    // 必要があればスライドショーなどの更新
-    _timer?.cancel();
+    // 必要があればスライドショーなどの更新をここでする
+    stopTimer();
   }
 
   void run() {
     _lapRepo.run();
     _userData.running = true;
-    // 必要があればスライドショーなどの更新
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 600), onEveryFrame);
+    // 必要があればスライドショーなどの更新をここでする
+    startTimer();
   }
 }
 
