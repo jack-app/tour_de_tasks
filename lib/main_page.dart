@@ -118,7 +118,7 @@ class SlideShow extends StatefulWidget {
 }
 
 class _SlideShowState extends State<SlideShow> {
-  String location = app.cities[0];
+  String location = app.cities.keys.first;
 
   @override
   void initState() {
