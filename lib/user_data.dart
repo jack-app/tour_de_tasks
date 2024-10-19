@@ -1,20 +1,27 @@
+import 'dart:io';
+import 'dart:developer' as developer;
+
 import 'package:shared_preferences/shared_preferences.dart';
 // 用法はここに https://pub.dev/packages/shared_preferences
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqflite_ffi;
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart' as sqflite_ffi_web;
 // 用法はここに https://pub.dev/packages/sqflite
+//            https://github.com/tekartik/sqflite/blob/master/sqflite_common_ffi/doc/using_ffi_instead_of_sqflite.md
+//            https://pub.dev/packages/sqflite_common_ffi_web
 import 'app_data.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class UserData {
-  // インスタンスとsheredPreferencesを利用するための変数
-  static UserData? _instance;
+  UserData._internal();
   SharedPreferencesWithCache? prefs;
 
+  bool prepared = false;
+
   // シングルトンにするためのファクトリコンストラクタ
-  factory UserData() {
-    _instance ??= UserData._internal();
-    return _instance!;
-  }
-  UserData._internal();
+  static final UserData _instance = UserData._internal();
+  factory UserData() => _instance;
 
   // userDataにアクセスする前に必ず呼び出す初期化関数
   Future<void> prepare() async {
@@ -29,13 +36,28 @@ class UserData {
         'page'
       },
     ));
+    developer.log('UserData prepared', name: 'UserData');
+    developer.log('startCity: $startCity', name: 'UserData');
+    developer.log('goalDistance: $goalDistanceKm', name: 'UserData');
+    developer.log('confPassedDistanceKm: $confPassedDistanceKm',
+        name: 'UserData');
+    developer.log('running: $running', name: 'UserData');
+    developer.log('page: $page', name: 'UserData');
+    prepared = true;
   }
 
   // 以下getter定義
   // setterについては本当はawaitしなければならないが，取り回しが悪いのでそのまま．
 
   // 開始地点
-  String get startCity => prefs!.getString('startCity') ?? cities.keys.first;
+  String get startCity {
+    var startCity = prefs!.getString('startCity');
+    if (startCity == null || !cities.containsKey(startCity)) {
+      return cities.keys.first;
+    }
+    return startCity;
+  }
+
   set startCity(String value) => prefs!.setString('startCity', value);
 
   // 目標距離 (km)
@@ -67,68 +89,97 @@ class Lap {
 }
 
 class LapRepository {
+  LapRepository._internal();
   static String dbName = 'lapRecord.db';
   static String tableName = 'lapRecord';
-  Database? db;
+  late final Database db;
+
+  bool prepared = false;
 
   // シングルトンにするためのファクトリコンストラクタ
-  factory LapRepository() {
-    return LapRepository._internal();
-  }
-  LapRepository._internal();
+  static final LapRepository _instance = LapRepository._internal();
+  factory LapRepository() => _instance;
 
   // 初期化関数
   Future<void> prepare() async {
-    db ??= await openDatabase(
-      dbName,
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute('CREATE TABLE $tableName ('
-            'whenEpochSec INTEGER PRIMARY KEY,'
-            'act ENUM("run","rest"),'
-            ')');
-      },
-    );
+    if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
+      sqflite_ffi.sqfliteFfiInit();
+      databaseFactory = sqflite_ffi.databaseFactoryFfi;
+    } else if (kIsWeb) {
+      databaseFactory = sqflite_ffi_web.databaseFactoryFfiWeb;
+    }
+    db = await openDatabase(dbName);
+    await db.execute('CREATE TABLE IF NOT EXISTS $tableName ('
+        '\'whenEpochSec\' INTEGER PRIMARY KEY,'
+        '\'act\' TEXT,'
+        'CHECK (act = \'run\' OR act = \'rest\')'
+        ');');
+    developer.log('LapRepository prepared', name: 'LapRepository');
+    prepared = true;
   }
 
   // 走り出した時刻を記録する
-  Future<void> run() async {
-    await db!.insert(tableName, <String, dynamic>{
-      'whenEpochSec': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'act': 'run',
-    });
+  // 記録に失敗した場合はfalseを返す
+  Future<bool> run() async {
+    try {
+      await db.execute('INSERT INTO $tableName (whenEpochSec, act) '
+          'VALUES ('
+          '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
+          '\'run\')');
+      return true;
+    } catch (e) {
+      developer.log(e.toString(), name: 'LapRepository');
+      return false;
+    }
   }
 
   // 休憩を始めた時刻を記録する
-  Future<void> rest() async {
-    await db!.insert(tableName, <String, dynamic>{
-      'whenEpochSec': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'act': 'rest',
-    });
+  // 記録に失敗した場合はfalseを返す
+  Future<bool> rest() async {
+    try {
+      await db.execute('INSERT INTO $tableName (whenEpochSec, act) '
+          'VALUES ('
+          '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
+          '\'rest\')');
+      return true;
+    } catch (e) {
+      developer.log(e.toString(), name: 'LapRepository');
+      return false;
+    }
   }
 
   // すべての記録を削除する
-  Future<void> reset() async {
-    await db!.delete(tableName);
+  // 記録に失敗した場合はfalseを返す
+  Future<bool> reset() async {
+    try {
+      await db.execute('DROP TABLE IF EXISTS $tableName');
+      return true;
+    } catch (e) {
+      developer.log(e.toString(), name: 'LapRepository');
+      return false;
+    }
   }
 
   // 記録を取得する
-  Future<List<Lap>?> get(int afterEpochSec) async {
-    var results = await db!.query(tableName,
-        where: 'whenEpochSec > ?', whereArgs: [afterEpochSec]);
-    if (results.isEmpty) return null;
-    return results
-        .map((e) => Lap(
-            whenEpochSec: e['whenEpochSec'] as int, act: e['act'] as String))
+  Future<List<Lap>> get(int afterEpochSec) async {
+    var res = await db.query(
+        '$tableName WHERE whenEpochSec > $afterEpochSec ORDER BY whenEpochSec');
+    return res
+        .map((element) => Lap(
+            whenEpochSec: element['whenEpochSec'] as int,
+            act: element['act'] as String))
         .toList();
   }
 
   Future<Lap?> getLast() async {
-    var result = await db!
-        .query(tableName, orderBy: 'whenEpochSec DESC', limit: 1, offset: 0);
-    if (result.isEmpty) return null;
-    return Lap(
-        whenEpochSec: result[0]['whenEpochSec'] as int,
-        act: result[0]['act'] as String);
+    var result =
+        await db.query('$tableName ORDER BY whenEpochSec DESC LIMIT 1');
+    if (result.isEmpty) {
+      return null;
+    } else {
+      return Lap(
+          whenEpochSec: result.first['whenEpochSec'] as int,
+          act: result.first['act'] as String);
+    }
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'start_page.dart';
@@ -20,14 +21,15 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  UserData? _userData;
-  Future<void>? _userDataPreparation;
+  final UserData _userData = UserData();
+  late Future<void> _userDataPreparation;
+  late Future<void> _lapRepositoryPreparation;
 
   @override
   void initState() {
     super.initState();
-    _userData ??= UserData();
-    _userDataPreparation ??= _userData!.prepare();
+    _userDataPreparation = _userData.prepare();
+    _lapRepositoryPreparation = LapRepository().prepare();
   }
 
   @override
@@ -41,13 +43,21 @@ class _MainAppState extends State<MainApp> {
         useMaterial3: true,
       ),
       home: FutureBuilder(
-        future: _userDataPreparation,
+        future: Future.wait([_userDataPreparation, _lapRepositoryPreparation]),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            developer.log('エラーが発生しました: ${snapshot.error.toString()}',
+                name: 'MainApp');
+            return Center(
+              child: Text('エラーが発生しました: ${snapshot.error.toString()}'),
+            );
+          }
+
           if (snapshot.connectionState == ConnectionState.done) {
             // アプリ終了時のページを開く
-            // ここが実行される時点でUserDataはprepareされているので，
+            // ここが実行される時点でUserData, LapRepositoryはprepareされているので，
             // StartPage, MainPage, GoalPage内でprepareは不要
-            switch (_userData!.page) {
+            switch (_userData.page) {
               case app.Page.start:
                 return const StartPage();
               case app.Page.main:
