@@ -22,17 +22,17 @@ class MainPageController {
   final UserData _userData = UserData();
 
   MainPageController._internal();
-  static final MainPageController _instance = MainPageController._internal();
 
   factory MainPageController() {
     // 中断からの復帰で状況を復元する
     developer.log('controller required', name: 'mainPageController');
-    if (_instance._userData.running) {
-      _instance.startTimer();
+    final MainPageController controller = MainPageController._internal();
+    if (controller._userData.running) {
+      controller.startTimer();
     } else {
-      _instance.stopTimer();
+      controller.stopTimer();
     }
-    return _instance;
+    return controller;
   }
 
   Future<bool> Function()? _updateProgressBar; // falseが返された場合それ以上の更新を行うべきでない
@@ -43,6 +43,7 @@ class MainPageController {
   void startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 600), onEveryFrame);
+    onEveryFrame(_timer!); // 初回のフレームにも更新を行う
     developer.log('timer started', name: 'mainPageController');
   }
 
