@@ -29,56 +29,59 @@ class _StartPageState extends State<StartPage> {
     // ここでwidgetを組み合わせる
     // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Start Page'),
-      ),
-      body: Column(
-        children: <Widget>[
-          CitySelector(key:citySelectorKey),
-          Container(
-            width: double.infinity, 
-            height: 80, 
-            color: Colors.black, // 背景色を黒
-            alignment: Alignment.center, // テキストを中央
-            child: Text('都市:  ${selectedCity}   距離:  ${app.cities[selectedCity]!} km   ',style:const TextStyle(color: Colors.white),),
-          ),
-          Container(
-            width: double.infinity, // 横いっぱいに広げる
-            height: 80, 
-            color: Colors.grey[800], // 背景色
-            alignment: Alignment.center, // テキストを中央
-            child: Text('目安所要時間: ${(app.cities[selectedCity]! / app.initialSpeedKmPerSec).toStringAsFixed(2)}  ',style:const TextStyle(color: Colors.white),),
-          ),
-          Spacer(flex: 1),
-          SizedBox(
-            width: 500, 
-            height: 100, 
-            
-            child: ElevatedButton(
-              onPressed: () {
-                // ページ遷移はこんな感じ
-                Navigator
-                .of(context)
-                .pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => const MainPage()
-                  )
-                );
-              }, 
-              
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey, 
-                
-              ),
-              child: const Text('旅に出る!',style: TextStyle(color: Colors.white), )
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Start Page'),
+        ),
+        body: Column(
+          children: <Widget>[
+            CitySelector(
+              key: citySelectorKey,
+              onSelectedCityChanged: () {
+                setState(() {});
+              },
             ),
-          ),
-          Spacer(flex: 1)
-            
-        ],
-      )
-    );
+            Container(
+              width: double.infinity,
+              height: 80,
+              color: Colors.black, // 背景色を黒
+              alignment: Alignment.center, // テキストを中央
+              child: Text(
+                '都市:  ${selectedCity}   距離:  ${app.cities[selectedCity]!} km   ',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            Container(
+              width: double.infinity, // 横いっぱいに広げる
+              height: 80,
+              color: Colors.grey[800], // 背景色
+              alignment: Alignment.center, // テキストを中央
+              child: Text(
+                '目安所要時間: ${(app.cities[selectedCity]! / app.initialSpeedKmPerSec).toStringAsFixed(2)}  ',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            Spacer(flex: 1),
+            SizedBox(
+              width: 500,
+              height: 100,
+              child: ElevatedButton(
+                  onPressed: () {
+                    // ページ遷移はこんな感じ
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const MainPage()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                  ),
+                  child: const Text(
+                    '旅に出る!',
+                    style: TextStyle(color: Colors.white),
+                  )),
+            ),
+            Spacer(flex: 1)
+          ],
+        ));
   }
 
   String get selectedCity =>
@@ -86,7 +89,14 @@ class _StartPageState extends State<StartPage> {
 }
 
 class CitySelector extends StatefulWidget {
-  const CitySelector({super.key});
+  final void Function()? onSelectedCityChanged;
+  void _onSelectedCityChanged() {
+    if (onSelectedCityChanged != null) {
+      onSelectedCityChanged!();
+    }
+  }
+
+  const CitySelector({super.key, this.onSelectedCityChanged});
 
   @override
   State<CitySelector> createState() => _CitySelectorState();
@@ -95,11 +105,18 @@ class CitySelector extends StatefulWidget {
 class _CitySelectorState extends State<CitySelector> {
   late PageController controller;
   late Random randomProvider;
+  int? index;
 
   @override
   void initState() {
     super.initState();
     controller = PageController();
+    controller.addListener(() {
+      if (index != controller.page?.round()) {
+        index = controller.page?.round();
+        widget._onSelectedCityChanged();
+      }
+    });
     randomProvider = Random();
   }
 
@@ -109,16 +126,14 @@ class _CitySelectorState extends State<CitySelector> {
     return cities[index];
   }
 
-  int nProvidedColors = 0;
-  Color provideColor() {
+  Color provideColor(int index) {
     var options = [
       Colors.redAccent,
       Colors.greenAccent,
       Colors.blueAccent,
       Colors.amber
     ];
-    nProvidedColors++;
-    return options[(nProvidedColors - 1) % options.length];
+    return options[index % options.length];
   }
 
   @override
@@ -129,11 +144,12 @@ class _CitySelectorState extends State<CitySelector> {
         child: PageView(
           controller: controller,
           children: [
-            for (var cityName in app.cities.keys)
+            for (var i = 0; i < app.cities.length; i++)
               Container(
-                color: provideColor(),
+                color: provideColor(i),
                 child: Center(
-                  child: Text(cityName),
+                  child: Text(app.cities.keys.elementAt(i),
+                      style: const TextStyle(fontSize: 30)),
                 ),
               ),
           ],
