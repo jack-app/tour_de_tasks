@@ -20,14 +20,15 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  UserData? _userData;
-  Future<void>? _userDataPreparation;
+  final UserData _userData = UserData();
+  late Future<void> _userDataPreparation;
+  late Future<void> _lapRepoPreparation;
 
   @override
   void initState() {
     super.initState();
-    _userData ??= UserData();
-    _userDataPreparation ??= _userData!.prepare();
+    _userDataPreparation = _userData.prepare();
+    _lapRepoPreparation = LapRepository().prepare();
   }
 
   @override
@@ -41,13 +42,13 @@ class _MainAppState extends State<MainApp> {
         useMaterial3: true,
       ),
       home: FutureBuilder(
-        future: _userDataPreparation,
+        future: Future.wait([_userDataPreparation, _lapRepoPreparation]),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             // アプリ終了時のページを開く
-            // ここが実行される時点でUserDataはprepareされているので，
+            // ここが実行される時点でUserData, LapRepositoryはprepareされているので，
             // StartPage, MainPage, GoalPage内でprepareは不要
-            switch (_userData!.page) {
+            switch (_userData.page) {
               case app.Page.start:
                 return const StartPage();
               case app.Page.main:
