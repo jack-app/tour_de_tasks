@@ -73,6 +73,7 @@ class _StartPageState extends State<StartPage> {
                     UserData().startCity = selectedCity;
                     UserData().confPassedDistanceKm = 0;
                     UserData().goalDistanceKm = app.cities[selectedCity]!;
+                    UserData().running = true;
                     LapRepository().reset();
                   },
                   style: ElevatedButton.styleFrom(
