@@ -42,7 +42,7 @@ class MainPageController {
 
   void startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 600), onEveryFrame);
+    _timer = Timer.periodic(const Duration(milliseconds: 6), onEveryFrame);
     onEveryFrame(_timer!); // 初回のフレームにも更新を行う
     developer.log('timer started', name: 'mainPageController');
   }
@@ -219,11 +219,12 @@ class SlideShow extends StatefulWidget {
 }
 
 class _SlideShowState extends State<SlideShow> {
-  String location = app.cities.keys.first;
+  late String location;
 
   @override
   void initState() {
     super.initState();
+    location = UserData().startCity;
     widget.controller._updateSlideShow = () async {
       // widgetが表示されているかどうか
       if (mounted) {
@@ -275,11 +276,12 @@ class _ProgressBarState extends State<ProgressBar> {
   double passedDistanceKm = 0.0;
   double remainingDistanceKm = 0.0;
   double speedKmPerSec = 0.0;
-  String location = '';
+  late String location;
 
   @override
   void initState() {
     super.initState();
+    location = UserData().startCity;
     widget.controller._updateProgressBar = () async {
       if (mounted) {
         // widgetが表示されているかどうか
