@@ -1,24 +1,25 @@
+import 'dart:ffi';
+
 import 'package:shared_preferences/shared_preferences.dart';
 // 用法はここに https://pub.dev/packages/shared_preferences
-import 'package:sqflite/sqflite.dart';
-// 用法はここに https://pub.dev/packages/sqflite
+// ~~import 'package:sqflite/sqflite.dart'; -> 非対応らしい
+// ~~用法はここに https://pub.dev/packages/sqflite
+import 'package:sqlite3/open.dart';
+import 'package:sqlite3/sqlite3.dart';
+// 用法はここに https://pub.dev/packages/sqlite3
 import 'app_data.dart';
 
 import 'dart:developer' as developer;
 
 class UserData {
-  // インスタンスとsheredPreferencesを利用するための変数
-  static UserData? _instance;
+  UserData._internal();
   SharedPreferencesWithCache? prefs;
 
   bool prepared = false;
 
   // シングルトンにするためのファクトリコンストラクタ
-  factory UserData() {
-    _instance ??= UserData._internal();
-    return _instance!;
-  }
-  UserData._internal();
+  static final UserData _instance = UserData._internal();
+  factory UserData() => _instance;
 
   // userDataにアクセスする前に必ず呼び出す初期化関数
   Future<void> prepare() async {
@@ -86,67 +87,70 @@ class Lap {
 }
 
 class LapRepository {
+  LapRepository._internal();
   static String dbName = 'lapRecord.db';
   static String tableName = 'lapRecord';
-  Database? db;
+  late final Database db;
 
   bool prepared = false;
 
   // シングルトンにするためのファクトリコンストラクタ
-  factory LapRepository() {
-    return LapRepository._internal();
-  }
-  LapRepository._internal();
+  static final LapRepository _instance = LapRepository._internal();
+  factory LapRepository() => _instance;
 
   // 初期化関数
-  Future<void> prepare() async {
-    db ??= await openDatabase(
-      dbName,
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute('CREATE TABLE $tableName ('
-            'whenEpochSec INTEGER PRIMARY KEY,'
-            'act ENUM("run","rest"),'
-            ')');
-      },
-    );
+  void prepare() {
+    openDB();
+    db.execute('CREATE TABLE IF NOT EXISTS $tableName ('
+        'whenEpochSec INTEGER PRIMARY KEY,'
+        'act ENUM("run","rest"),'
+        ')');
+    developer.log('LapRepository prepared', name: 'LapRepository');
     prepared = true;
   }
 
+  void openDB() {
+    db = sqlite3.open(dbName);
+  }
+
+  void closeDB() {
+    db.dispose();
+  }
+
   // 走り出した時刻を記録する
-  Future<void> run() async {
-    await db!.insert(tableName, <String, dynamic>{
-      'whenEpochSec': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'act': 'run',
-    });
+  void run() {
+    db.execute('INSERT INTO $tableName (whenEpochSec, act) '
+        'VALUES ('
+        '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
+        '"run")');
   }
 
   // 休憩を始めた時刻を記録する
-  Future<void> rest() async {
-    await db!.insert(tableName, <String, dynamic>{
-      'whenEpochSec': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'act': 'rest',
-    });
+  void rest() {
+    db.execute('INSERT INTO $tableName (whenEpochSec, act) '
+        'VALUES ('
+        '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
+        '"rest")');
   }
 
   // すべての記録を削除する
-  Future<void> reset() async {
-    await db!.delete(tableName);
+  void reset() {
+    db.execute('DROP TABLE IF EXISTS $tableName');
   }
 
   // 記録を取得する
-  Future<List<Lap>?> get(int afterEpochSec) async {
-    var results = await db!.query(tableName,
-        where: 'whenEpochSec > ?', whereArgs: [afterEpochSec]);
-    return results
-        .map((e) => Lap(
-            whenEpochSec: e['whenEpochSec'] as int, act: e['act'] as String))
+  List<Lap> get(int afterEpochSec) {
+    var res = db.select(
+        'SELECT * FROM $tableName WHERE whenEpochSec > $afterEpochSec ORDER BY whenEpochSec');
+    return res
+        .map((element) =>
+            Lap(whenEpochSec: element['whenEpochSec'], act: element['act']))
         .toList();
   }
 
   Future<Lap?> getLast() async {
-    var result = await db!
-        .query(tableName, orderBy: 'whenEpochSec DESC', limit: 1, offset: 0);
+    var result = await db.query(tableName,
+        orderBy: 'whenEpochSec DESC', limit: 1, offset: 0);
     if (result.isEmpty) return null;
     return Lap(
         whenEpochSec: result[0]['whenEpochSec'] as int,

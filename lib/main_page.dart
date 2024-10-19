@@ -1,17 +1,30 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'goal_page.dart';
 import 'user_data.dart';
 import 'app_data.dart' as app;
 
+// 速度は次の連続走行時間の関数で規定する
+// v( t[sec] ) = initialSpeedKmPerSec + (maxSpeedKmPerSec - initialSpeedKmPerSec) * (1 - exp(-t / 60))
+//             = maxSpeedKmPerSec - (maxSpeedKmPerSec - initialSpeedKmPerSec) * exp( -t / 60 )
+// なお，
+// L( t[sec] ) = ∫[0, t] v(τ) dτ
+//             = maxSpeedKmPerSec * t
+//               + (maxSpeedKmPerSec - initialSpeedKmPerSec) * exp(-t / 60) / 60
+//               - (maxSpeedKmPerSec - initialSpeedKmPerSec) / 60
+
 // このクラスのインスタンスをwidget間でリレーさせて，包括的な操作を用意にする
 class MainPageController {
   bool Function()? _updateProgressBar; // falseが返された場合それ以上の更新を行うべきでない
   bool Function()? _updateSlideShow; // falseが返された場合それ以上の更新を行うべきでない
-  Timer? _timer;
+  late Timer _timer;
 
   MainPageController._internal();
+
+  final LapRepository _lapRepo = LapRepository();
+  final UserData _userData = UserData();
 
   factory MainPageController() {
     MainPageController controller = MainPageController._internal();
@@ -36,29 +49,71 @@ class MainPageController {
     }
   }
 
-  double calcDistanceKm() {
-    // 要実装
-    return UserData().confPassedDistanceKm;
+  double calcSpeedKmPerSec(double keepRunningTimeSec) {
+    const minInSec = 60;
+    final keepRunningTimeMin = keepRunningTimeSec / minInSec;
+    return app.maxSpeedKmPerSec -
+        (app.maxSpeedKmPerSec - app.initialSpeedKmPerSec) *
+            exp(-keepRunningTimeMin);
   }
 
-  String calcLocation() {
-    // 要実装
-    return UserData().startCity;
+  double calcPassedDistanceKmFromLastRest(double keepRunningTimeSec) {
+    const minInSec = 60;
+    const maxMinDiff = app.maxSpeedKmPerSec - app.initialSpeedKmPerSec;
+    final keepRunningTimeMin = keepRunningTimeSec / minInSec;
+    return app.maxSpeedKmPerSec * keepRunningTimeSec +
+        maxMinDiff * exp(-keepRunningTimeMin) / minInSec -
+        maxMinDiff / minInSec;
+  }
+
+  Future<double> calcPassedDistanceKm() async {
+    // var lap = await _lapRepo.getLast();
+    // if (lap == null) {
+    //   return 0.0;
+    // } else if (lap.act == 'rest') {
+    //   return UserData().confPassedDistanceKm;
+    // } else if (lap.act == 'run') {
+    //   final passedDistanceKm = calcPassedDistanceKmFromLastRest(
+    //       DateTime.now().millisecondsSinceEpoch / 1000 - lap.whenEpochSec);
+    //   return UserData().confPassedDistanceKm + passedDistanceKm;
+    // } else {
+    //   throw Exception('Invalid act');
+    // }
+    return 0.0;
+  }
+
+  Future<double> calcRemainingDistanceKm() async {
+    var initialRemainingDistanceKm = app.cities[_userData.startCity];
+    if (initialRemainingDistanceKm == null) {
+      throw Exception('Invalid startCity');
+    }
+    final passedDistanceKm = await calcPassedDistanceKm();
+    return max(0, initialRemainingDistanceKm - passedDistanceKm);
+  }
+
+  Future<String> calcLocation() async {
+    final remainingDistanceKm = await calcRemainingDistanceKm();
+    final city = app.cities.entries
+        .firstWhere((entry) => entry.value >= remainingDistanceKm)
+        .key;
+    return city;
   }
 
   void rest() {
-    // 要実装
-    // Lapで記録
-    // confPassedDistanceKmを更新
+    _userData.running = false;
+    calcPassedDistanceKm().then((distanceKm) {
+      _userData.confPassedDistanceKm = distanceKm;
+      _lapRepo.rest();
+    });
     // 必要があればスライドショーなどの更新
-    _timer?.cancel();
+    _timer.cancel();
   }
 
   void run() {
-    // 要実装
-    // Lapで記録
+    _lapRepo.run();
+    _userData.running = true;
     // 必要があればスライドショーなどの更新
-    _timer?.cancel();
+    _timer.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), onEverySecond);
   }
 }
@@ -73,7 +128,7 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  MainPageController? controller;
+  late MainPageController controller;
 
   @override
   void initState() {
@@ -95,8 +150,8 @@ class _MainPageState extends State<MainPage> {
         ),
         body: Column(
           children: <Widget>[
-            SlideShow(controller: controller!),
-            ControlPanel(controller: controller!),
+            SlideShow(controller: controller),
+            ControlPanel(controller: controller),
             ElevatedButton(
                 onPressed: () {
                   // ページ遷移はこんな感じ
@@ -124,14 +179,17 @@ class _SlideShowState extends State<SlideShow> {
   void initState() {
     super.initState();
     widget.controller._updateSlideShow = () {
+      // widgetが表示されているかどうか
       if (mounted) {
-        // widgetが表示されているかどうか
-        setState(() {
-          location = widget.controller.calcLocation();
+        widget.controller.calcLocation().then((location) {
+          setState(() {
+            this.location = location;
+          });
         });
         return true;
       } else {
-        return false; // すでに表示されていないので，更新を行うべきでない
+        // すでに表示されていないので，更新を行うべきでない
+        return false;
       }
     };
   }
@@ -177,9 +235,11 @@ class _ProgressBarState extends State<ProgressBar> {
     widget.controller._updateProgressBar = () {
       if (mounted) {
         // widgetが表示されているかどうか
-        setState(() {
-          _countUpForTest++;
-          passedDistanceKm = widget.controller.calcDistanceKm();
+        widget.controller.calcPassedDistanceKm().then((distanceKm) {
+          setState(() {
+            _countUpForTest++;
+            passedDistanceKm = distanceKm;
+          });
         });
         return true;
       } else {

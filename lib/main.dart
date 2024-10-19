@@ -28,7 +28,7 @@ class _MainAppState extends State<MainApp> {
   void initState() {
     super.initState();
     _userDataPreparation = _userData.prepare();
-    _lapRepoPreparation = LapRepository().prepare();
+    LapRepository().prepare();
   }
 
   @override
@@ -42,8 +42,14 @@ class _MainAppState extends State<MainApp> {
         useMaterial3: true,
       ),
       home: FutureBuilder(
-        future: Future.wait([_userDataPreparation, _lapRepoPreparation]),
+        future: Future.wait([_userDataPreparation]),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('エラーが発生しました: ${snapshot.error.toString()}'),
+            );
+          }
+
           if (snapshot.connectionState == ConnectionState.done) {
             // アプリ終了時のページを開く
             // ここが実行される時点でUserData, LapRepositoryはprepareされているので，
