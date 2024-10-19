@@ -1,12 +1,17 @@
+import 'dart:io';
+import 'dart:developer' as developer;
+
 import 'package:shared_preferences/shared_preferences.dart';
 // 用法はここに https://pub.dev/packages/shared_preferences
-// ~~import 'package:sqflite/sqflite.dart'; -> 非対応らしい
-// ~~用法はここに https://pub.dev/packages/sqflite
-import 'package:sqlite3/sqlite3.dart';
-// 用法はここに https://pub.dev/packages/sqlite3
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as sqflite_ffi;
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart' as sqflite_ffi_web;
+// 用法はここに https://pub.dev/packages/sqflite
+//            https://github.com/tekartik/sqflite/blob/master/sqflite_common_ffi/doc/using_ffi_instead_of_sqflite.md
+//            https://pub.dev/packages/sqflite_common_ffi_web
 import 'app_data.dart';
 
-import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserData {
   UserData._internal();
@@ -96,59 +101,85 @@ class LapRepository {
   factory LapRepository() => _instance;
 
   // 初期化関数
-  void prepare() {
-    openDB();
-    db.execute('CREATE TABLE IF NOT EXISTS $tableName ('
-        'whenEpochSec INTEGER PRIMARY KEY,'
-        'act ENUM("run","rest"),'
-        ')');
+  Future<void> prepare() async {
+    if (!kIsWeb && (Platform.isLinux || Platform.isWindows)) {
+      sqflite_ffi.sqfliteFfiInit();
+      databaseFactory = sqflite_ffi.databaseFactoryFfi;
+    } else if (kIsWeb) {
+      databaseFactory = sqflite_ffi_web.databaseFactoryFfiWeb;
+    }
+    db = await openDatabase(dbName);
+    await db.execute('CREATE TABLE IF NOT EXISTS $tableName ('
+        '\'whenEpochSec\' INTEGER PRIMARY KEY,'
+        '\'act\' TEXT,'
+        'CHECK (act = \'run\' OR act = \'rest\')'
+        ');');
     developer.log('LapRepository prepared', name: 'LapRepository');
     prepared = true;
   }
 
-  void openDB() {
-    db = sqlite3.open(dbName);
-  }
-
-  void closeDB() {
-    db.dispose();
-  }
-
   // 走り出した時刻を記録する
-  void run() {
-    db.execute('INSERT INTO $tableName (whenEpochSec, act) '
-        'VALUES ('
-        '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
-        '"run")');
+  // 記録に失敗した場合はfalseを返す
+  Future<bool> run() async {
+    try {
+      await db.execute('INSERT INTO $tableName (whenEpochSec, act) '
+          'VALUES ('
+          '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
+          '\'run\')');
+      return true;
+    } catch (e) {
+      developer.log(e.toString(), name: 'LapRepository');
+      return false;
+    }
   }
 
   // 休憩を始めた時刻を記録する
-  void rest() {
-    db.execute('INSERT INTO $tableName (whenEpochSec, act) '
-        'VALUES ('
-        '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
-        '"rest")');
+  // 記録に失敗した場合はfalseを返す
+  Future<bool> rest() async {
+    try {
+      await db.execute('INSERT INTO $tableName (whenEpochSec, act) '
+          'VALUES ('
+          '${DateTime.now().millisecondsSinceEpoch ~/ 1000},'
+          '\'rest\')');
+      return true;
+    } catch (e) {
+      developer.log(e.toString(), name: 'LapRepository');
+      return false;
+    }
   }
 
   // すべての記録を削除する
-  void reset() {
-    db.execute('DROP TABLE IF EXISTS $tableName');
+  // 記録に失敗した場合はfalseを返す
+  Future<bool> reset() async {
+    try {
+      await db.execute('DROP TABLE IF EXISTS $tableName');
+      return true;
+    } catch (e) {
+      developer.log(e.toString(), name: 'LapRepository');
+      return false;
+    }
   }
 
   // 記録を取得する
-  List<Lap> get(int afterEpochSec) {
-    var res = db.select(
-        'SELECT * FROM $tableName WHERE whenEpochSec > $afterEpochSec ORDER BY whenEpochSec');
+  Future<List<Lap>> get(int afterEpochSec) async {
+    var res = await db.query(
+        '$tableName WHERE whenEpochSec > $afterEpochSec ORDER BY whenEpochSec');
     return res
-        .map((element) =>
-            Lap(whenEpochSec: element['whenEpochSec'], act: element['act']))
+        .map((element) => Lap(
+            whenEpochSec: element['whenEpochSec'] as int,
+            act: element['act'] as String))
         .toList();
   }
 
   Future<Lap?> getLast() async {
-    var result = db
-        .select('SELECT * FROM $tableName ORDER BY whenEpochSec DESC LIMIT 1');
-    return Lap(
-        whenEpochSec: result.first['whenEpochSec'], act: result.first['act']);
+    var result =
+        await db.query('$tableName ORDER BY whenEpochSec DESC LIMIT 1');
+    if (result.isEmpty) {
+      return null;
+    } else {
+      return Lap(
+          whenEpochSec: result.first['whenEpochSec'] as int,
+          act: result.first['act'] as String);
+    }
   }
 }

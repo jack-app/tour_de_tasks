@@ -67,19 +67,18 @@ class MainPageController {
   }
 
   Future<double> calcPassedDistanceKm() async {
-    // var lap = await _lapRepo.getLast();
-    // if (lap == null) {
-    //   return 0.0;
-    // } else if (lap.act == 'rest') {
-    //   return UserData().confPassedDistanceKm;
-    // } else if (lap.act == 'run') {
-    //   final passedDistanceKm = calcPassedDistanceKmFromLastRest(
-    //       DateTime.now().millisecondsSinceEpoch / 1000 - lap.whenEpochSec);
-    //   return UserData().confPassedDistanceKm + passedDistanceKm;
-    // } else {
-    //   throw Exception('Invalid act');
-    // }
-    return 0.0;
+    var lap = await _lapRepo.getLast();
+    if (lap == null) {
+      return 0.0;
+    } else if (lap.act == 'rest') {
+      return UserData().confPassedDistanceKm;
+    } else if (lap.act == 'run') {
+      final passedDistanceKm = calcPassedDistanceKmFromLastRest(
+          DateTime.now().millisecondsSinceEpoch / 1000 - lap.whenEpochSec);
+      return UserData().confPassedDistanceKm + passedDistanceKm;
+    } else {
+      throw Exception('Invalid act');
+    }
   }
 
   Future<double> calcRemainingDistanceKm() async {

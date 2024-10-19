@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'start_page.dart';
@@ -22,12 +23,13 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   final UserData _userData = UserData();
   late Future<void> _userDataPreparation;
+  late Future<void> _lapRepositoryPreparation;
 
   @override
   void initState() {
     super.initState();
     _userDataPreparation = _userData.prepare();
-    LapRepository().prepare();
+    _lapRepositoryPreparation = LapRepository().prepare();
   }
 
   @override
@@ -41,9 +43,11 @@ class _MainAppState extends State<MainApp> {
         useMaterial3: true,
       ),
       home: FutureBuilder(
-        future: Future.wait([_userDataPreparation]),
+        future: Future.wait([_userDataPreparation, _lapRepositoryPreparation]),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
+            developer.log('エラーが発生しました: ${snapshot.error.toString()}',
+                name: 'MainApp');
             return Center(
               child: Text('エラーが発生しました: ${snapshot.error.toString()}'),
             );
