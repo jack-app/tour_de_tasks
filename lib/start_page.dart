@@ -69,6 +69,11 @@ class _StartPageState extends State<StartPage> {
                     // ページ遷移はこんな感じ
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const MainPage()));
+                    // ページ遷移とともにUserDataとLapRepositoryを初期化する
+                    UserData().startCity = selectedCity;
+                    UserData().confPassedDistanceKm = 0;
+                    UserData().goalDistanceKm = app.cities[selectedCity]!;
+                    LapRepository().reset();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey,
