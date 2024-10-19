@@ -18,6 +18,7 @@ import 'app_data.dart' as app;
 
 // このクラスのインスタンスをwidget間でリレーさせて，包括的な操作を用意にする
 class MainPageController {
+  // <private>
   final LapRepository _lapRepo = LapRepository();
   final UserData _userData = UserData();
 
@@ -28,9 +29,9 @@ class MainPageController {
     developer.log('controller required', name: 'mainPageController');
     final MainPageController controller = MainPageController._internal();
     if (controller._userData.running) {
-      controller.startTimer();
+      controller._startTimer();
     } else {
-      controller.stopTimer();
+      controller._stopTimer();
     }
     return controller;
   }
@@ -40,19 +41,19 @@ class MainPageController {
   Future<bool> Function()? _autoTransition; // falseが返された場合それ以上の更新を行うべきでない
   Timer? _timer;
 
-  void startTimer() {
+  void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(milliseconds: 6), onEveryFrame);
-    onEveryFrame(_timer!); // 初回のフレームにも更新を行う
+    _timer = Timer.periodic(const Duration(milliseconds: 6), _onEveryFrame);
+    _onEveryFrame(_timer!); // 初回のフレームにも更新を行う
     developer.log('timer started', name: 'mainPageController');
   }
 
-  void stopTimer() {
+  void _stopTimer() {
     _timer?.cancel();
     developer.log('timer stopped', name: 'mainPageController');
   }
 
-  void onEveryFrame(Timer timer) async {
+  void _onEveryFrame(Timer timer) async {
     // 初期化が終わっていない場合は何もしない
     if (_updateProgressBar == null ||
         _updateSlideShow == null ||
@@ -68,10 +69,12 @@ class MainPageController {
         .every((result) => result);
 
     if (!timerShouldBeAlive) {
-      stopTimer();
+      _stopTimer();
     }
   }
+  // </private>
 
+  // <public>
   Future<int> getKeepRunningTimeInSec({Lap? lastLap}) async {
     var lap = lastLap ?? await _lapRepo.getLast();
     if (lap == null || lap.act == 'rest') {
@@ -140,15 +143,16 @@ class MainPageController {
       _lapRepo.rest();
     });
     // 必要があればスライドショーなどの更新をここでする
-    stopTimer();
+    _stopTimer();
   }
 
   void run() {
     _lapRepo.run();
     _userData.running = true;
     // 必要があればスライドショーなどの更新をここでする
-    startTimer();
+    _startTimer();
   }
+  // </public>
 }
 
 // Widgetの設定（ステートに依存しない）を行う．
@@ -181,12 +185,14 @@ class _MainPageState extends State<MainPage> {
         if (context.mounted) {
           Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const GoalPage()));
+          controller.rest();
         }
         return false;
       } else {
         return true;
       }
     };
+
     // ここでwidgetを組み合わせる
     // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
