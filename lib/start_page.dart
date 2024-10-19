@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'main_page.dart';
 import 'app_data.dart' as app;
@@ -29,29 +28,22 @@ class _StartPageState extends State<StartPage> {
     // ここでwidgetを組み合わせる
     // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Start Page'),
-      ),
-      body: Column(
-        children: <Widget>[
-          const CitySelector(),
-          ElevatedButton(
-            onPressed: () {
-              // ページ遷移はこんな感じ
-              Navigator
-              .of(context)
-              .pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => const MainPage()
-                )
-              );
-            }, 
-            child: const Text('Start')
-          ),
-        ],
-      )
-    );
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Start Page'),
+        ),
+        body: Column(
+          children: <Widget>[
+            const CitySelector(),
+            ElevatedButton(
+                onPressed: () {
+                  // ページ遷移はこんな感じ
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (context) => const MainPage()));
+                },
+                child: const Text('Start')),
+          ],
+        ));
   }
 
   String get selectedCity =>
@@ -67,13 +59,11 @@ class CitySelector extends StatefulWidget {
 
 class _CitySelectorState extends State<CitySelector> {
   late PageController controller;
-  late Random randomProvider;
 
   @override
   void initState() {
     super.initState();
     controller = PageController();
-    randomProvider = Random();
   }
 
   String get selectedCity {
