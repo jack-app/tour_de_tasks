@@ -182,4 +182,15 @@ class LapRepository {
           act: result.first['act'] as String);
     }
   }
+
+  Future<Lap?> getFirst() async {
+    var result = await db.query('$tableName ORDER BY whenEpochSec LIMIT 1');
+    if (result.isEmpty) {
+      return null;
+    } else {
+      return Lap(
+          whenEpochSec: result.first['whenEpochSec'] as int,
+          act: result.first['act'] as String);
+    }
+  }
 }
