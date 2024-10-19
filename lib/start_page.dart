@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'main_page.dart';
 import 'app_data.dart' as app;
@@ -13,11 +14,14 @@ class StartPage extends StatefulWidget {
 }
 
 class _StartPageState extends State<StartPage> {
+  late GlobalKey<_CitySelectorState> citySelectorKey;
+
   @override
   void initState() {
     super.initState();
     // アプリの中断時にこのページから起動するためにUserDataのpageを設定
     UserData().page = app.Page.start;
+    citySelectorKey = GlobalKey();
   }
 
   @override
@@ -49,6 +53,9 @@ class _StartPageState extends State<StartPage> {
       )
     );
   }
+
+  String get selectedCity =>
+      citySelectorKey.currentState?.selectedCity ?? app.cities.keys.first;
 }
 
 class CitySelector extends StatefulWidget {
@@ -57,9 +64,52 @@ class CitySelector extends StatefulWidget {
   @override
   State<CitySelector> createState() => _CitySelectorState();
 }
+
 class _CitySelectorState extends State<CitySelector> {
+  late PageController controller;
+  late Random randomProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = PageController();
+    randomProvider = Random();
+  }
+
+  String get selectedCity {
+    final cities = app.cities.keys.toList();
+    final index = controller.page?.round() ?? 0;
+    return cities[index];
+  }
+
+  int nProvidedColors = 0;
+  Color provideColor() {
+    var options = [
+      Colors.redAccent,
+      Colors.greenAccent,
+      Colors.blueAccent,
+      Colors.amber
+    ];
+    nProvidedColors++;
+    return options[(nProvidedColors - 1) % options.length];
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Text('地図とボタンを配置する');
+    return SizedBox(
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height / 2,
+        child: PageView(
+          controller: controller,
+          children: [
+            for (var cityName in app.cities.keys)
+              Container(
+                color: provideColor(),
+                child: Center(
+                  child: Text(cityName),
+                ),
+              ),
+          ],
+        ));
   }
 }

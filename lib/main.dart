@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'start_page.dart';
@@ -33,6 +34,7 @@ class _MainAppState extends State<MainApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'tour_de_tasks',
+      scrollBehavior: const MyCustomScrollBehavior(),
       theme: ThemeData(
         // アプリのテーマ
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -55,11 +57,22 @@ class _MainAppState extends State<MainApp> {
             }
           } else {
             return const Center(
-                child: CircularProgressIndicator(),
-              );
+              child: CircularProgressIndicator(),
+            );
           }
         },
       ),
     );
   }
+}
+
+// マウス操作を有効化するためのカスタムBehavior
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  const MyCustomScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+      };
 }
