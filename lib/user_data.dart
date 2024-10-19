@@ -152,7 +152,7 @@ class LapRepository {
   // 記録に失敗した場合はfalseを返す
   Future<bool> reset() async {
     try {
-      await db.execute('DROP TABLE IF EXISTS $tableName');
+      await db.execute('DELETE FROM $tableName');
       return true;
     } catch (e) {
       developer.log(e.toString(), name: 'LapRepository');
