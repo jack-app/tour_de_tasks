@@ -4,10 +4,14 @@ import 'package:sqflite/sqflite.dart';
 // 用法はここに https://pub.dev/packages/sqflite
 import 'app_data.dart';
 
+import 'dart:developer' as developer;
+
 class UserData {
   // インスタンスとsheredPreferencesを利用するための変数
   static UserData? _instance;
   SharedPreferencesWithCache? prefs;
+
+  bool prepared = false;
 
   // シングルトンにするためのファクトリコンストラクタ
   factory UserData() {
@@ -29,13 +33,28 @@ class UserData {
         'page'
       },
     ));
+    developer.log('UserData prepared', name: 'UserData');
+    developer.log('startCity: $startCity', name: 'UserData');
+    developer.log('goalDistance: $goalDistanceKm', name: 'UserData');
+    developer.log('confPassedDistanceKm: $confPassedDistanceKm',
+        name: 'UserData');
+    developer.log('running: $running', name: 'UserData');
+    developer.log('page: $page', name: 'UserData');
+    prepared = true;
   }
 
   // 以下getter定義
   // setterについては本当はawaitしなければならないが，取り回しが悪いのでそのまま．
 
   // 開始地点
-  String get startCity => prefs!.getString('startCity') ?? cities.keys.first;
+  String get startCity {
+    var startCity = prefs!.getString('startCity');
+    if (startCity == null || !cities.containsKey(startCity)) {
+      return cities.keys.first;
+    }
+    return startCity;
+  }
+
   set startCity(String value) => prefs!.setString('startCity', value);
 
   // 目標距離 (km)
@@ -71,6 +90,8 @@ class LapRepository {
   static String tableName = 'lapRecord';
   Database? db;
 
+  bool prepared = false;
+
   // シングルトンにするためのファクトリコンストラクタ
   factory LapRepository() {
     return LapRepository._internal();
@@ -89,6 +110,7 @@ class LapRepository {
             ')');
       },
     );
+    prepared = true;
   }
 
   // 走り出した時刻を記録する
@@ -116,7 +138,6 @@ class LapRepository {
   Future<List<Lap>?> get(int afterEpochSec) async {
     var results = await db!.query(tableName,
         where: 'whenEpochSec > ?', whereArgs: [afterEpochSec]);
-    if (results.isEmpty) return null;
     return results
         .map((e) => Lap(
             whenEpochSec: e['whenEpochSec'] as int, act: e['act'] as String))
