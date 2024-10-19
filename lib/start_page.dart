@@ -27,7 +27,6 @@ class _StartPageState extends State<StartPage> {
   @override
   Widget build(BuildContext context) {
     // ここでwidgetを組み合わせる
-    // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
