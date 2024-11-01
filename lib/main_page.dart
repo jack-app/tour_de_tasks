@@ -260,7 +260,6 @@ class ControlPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 仮なのでどう書き換えても良い
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
