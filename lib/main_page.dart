@@ -137,6 +137,9 @@ class MainPageController {
   }
 
   void rest() {
+    if (!_userData.running) {
+      return;
+    }
     _userData.running = false;
     calcPassedDistanceKm().then((distanceKm) {
       _userData.confPassedDistanceKm = distanceKm;
@@ -147,6 +150,9 @@ class MainPageController {
   }
 
   void run() {
+    if (_userData.running) {
+      return;
+    }
     _lapRepo.run();
     _userData.running = true;
     // 必要があればスライドショーなどの更新をここでする
@@ -261,8 +267,9 @@ class ControlPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     // 仮なのでどう書き換えても良い
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
-        ProgressBar(controller: controller),
+        Center(child: ProgressBar(controller: controller)),
         ElevatedButton(onPressed: controller.run, child: const Text('Run')),
         ElevatedButton(onPressed: controller.rest, child: const Text('Rest')),
       ],
@@ -272,7 +279,10 @@ class ControlPanel extends StatelessWidget {
 
 class ProgressBar extends StatefulWidget {
   final MainPageController controller;
-  const ProgressBar({super.key, required this.controller});
+  final double? width;
+  final double? height;
+  const ProgressBar(
+      {super.key, required this.controller, this.width, this.height});
 
   @override
   State<ProgressBar> createState() => _ProgressBarState();
@@ -281,34 +291,22 @@ class ProgressBar extends StatefulWidget {
 class _ProgressBarState extends State<ProgressBar> {
   double passedDistanceKm = 0.0;
   double remainingDistanceKm = 0.0;
-  double speedKmPerSec = 0.0;
-  late String location;
+  double width = 0;
+  double widgetHeight = 40;
 
   @override
   void initState() {
     super.initState();
-    location = UserData().startCity;
     widget.controller._updateProgressBar = () async {
       if (mounted) {
-        // widgetが表示されているかどうか
-        widget.controller.calcPassedDistanceKm().then((distanceKm) {
-          setState(() {
-            passedDistanceKm = distanceKm;
-          });
-        });
         widget.controller.calcRemainingDistanceKm().then((distanceKm) {
           setState(() {
             remainingDistanceKm = distanceKm;
           });
         });
-        widget.controller.calcSpeedKmPerSec().then((speed) {
+        widget.controller.calcPassedDistanceKm().then((distanceKm) {
           setState(() {
-            speedKmPerSec = speed;
-          });
-        });
-        widget.controller.calcLocation().then((location) {
-          setState(() {
-            this.location = location;
+            passedDistanceKm = distanceKm;
           });
         });
         return true;
@@ -316,16 +314,76 @@ class _ProgressBarState extends State<ProgressBar> {
         return false; // すでに表示されていないので，更新を行うべきでない
       }
     };
+    widgetHeight = widget.height ?? widgetHeight;
   }
+
+  static const double iconOffset = -10;
+  static const double iconSize = 8;
+  double barWidth = 5;
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      const Text('プログレスバーを配置する'),
-      Text('passedDistanceKm: $passedDistanceKm'),
-      Text('remainingDistanceKm: $remainingDistanceKm'),
-      Text('speedKmPerSec: $speedKmPerSec'),
-      Text('location: $location'),
-    ]);
+    width = widget.width ?? MediaQuery.of(context).size.width * 0.9;
+    // アイコンを見切れさせないためにpaddingを手動設定
+    var padding = (MediaQuery.of(context).size.width - width) / 2;
+    var progress = passedDistanceKm / app.cities[UserData().startCity]!;
+    if (progress > 1) {
+      progress = 1;
+    }
+    // 位置を計算
+    var iconRight = padding + width * progress + iconOffset - (iconSize / 2);
+    var iconLeft =
+        padding + width * (1 - progress) + iconOffset - (iconSize / 2);
+    var textRight =
+        progress > 0.7 ? null : padding + width * progress + iconSize;
+    var textLeft =
+        progress > 0.7 ? padding + width * (1 - progress) + iconSize : null;
+    developer.log(padding.toString(), name: 'padding');
+    widget.controller._updateProgressBar!();
+    return Container(
+        width: double.infinity,
+        height: widgetHeight,
+        clipBehavior: Clip.none,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // カスタマイズするため，デフォルトで提供されているLinearProgressIndicatorは使わない
+            Stack(
+              alignment: Alignment.centerRight,
+              children: [
+                // <プログレスバーの背景部分/>
+                Container(
+                  width: width,
+                  height: barWidth,
+                  color: Colors.grey,
+                ),
+                // <プログレスバーの進捗表示部分/>
+                Container(
+                  width: width * progress,
+                  height: barWidth,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ],
+            ),
+            // <アイコン/>
+            Positioned(
+              right: iconRight,
+              left: iconLeft,
+              top: widgetHeight / 4 - (iconSize / 2),
+              child: Image.asset(
+                'images/rider_icon.png',
+              ),
+            ),
+            // <テキスト表示/>
+            Positioned(
+              left: textLeft,
+              right: textRight,
+              top: 0,
+              child: Text(
+                'あと ${remainingDistanceKm.toStringAsFixed(1)} km',
+              ),
+            ),
+          ],
+        ));
   }
 }
