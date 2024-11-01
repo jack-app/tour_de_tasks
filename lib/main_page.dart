@@ -48,6 +48,9 @@ class MainPageController {
 
   void _stopTimer() {
     _timer?.cancel();
+    for (var listener in onStopListeners) {
+      listener();
+    }
     developer.log('timer stopped', name: 'mainPageController');
   }
 
@@ -73,6 +76,8 @@ class MainPageController {
   // </private>
 
   // <public>
+  List<Future<void> Function()> onStopListeners = [];
+
   Future<int> getKeepRunningTimeInSec({Lap? lastLap}) async {
     var lap = lastLap ?? await LapRepository().getLast();
     if (lap == null || lap.act == 'rest') {
@@ -186,10 +191,10 @@ class _MainPageState extends State<MainPage> {
     controller._autoTransition = () async {
       final remainingDistanceKm = await controller.calcRemainingDistanceKm();
       if (remainingDistanceKm <= 0) {
+        controller.rest();
         if (context.mounted) {
           Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const GoalPage()));
-          controller.rest();
         }
         return false;
       } else {
@@ -227,6 +232,7 @@ class SlideShow extends StatefulWidget {
 
 class _SlideShowState extends State<SlideShow> {
   late String location;
+  double speedKmPerSec = 0.0;
 
   @override
   void initState() {
@@ -240,17 +246,80 @@ class _SlideShowState extends State<SlideShow> {
             this.location = location;
           });
         });
+        widget.controller.calcSpeedKmPerSec().then((speedKmPerSec) {
+          setState(() {
+            this.speedKmPerSec = speedKmPerSec;
+          });
+        });
         return true;
       } else {
         // すでに表示されていないので，更新を行うべきでない
         return false;
       }
     };
+    widget.controller.onStopListeners.add(() async {
+      if (mounted) {
+        setState(() {
+          speedKmPerSec = 0.0;
+        });
+      }
+    });
+  }
+
+  static const Duration animationDuration = Duration(milliseconds: 500);
+
+  Color provideColor(int index) {
+    var options = [
+      Colors.redAccent,
+      Colors.greenAccent,
+      Colors.blueAccent,
+      Colors.amber
+    ];
+    return options[index % options.length];
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Text('スライドショーを配置する');
+    return Stack(
+      children: [
+        AnimatedSwitcher(
+          duration: animationDuration,
+          switchInCurve: Curves.easeIn,
+          child:
+              // <ここを画像に/>
+              Container(
+            key: ValueKey(
+                'photo_$location'), // スライドショーのアニメーションのためにキーが必要なのでリプレイス時には注意
+            color: provideColor(app.cities.keys.toList().indexOf(location)),
+            child: Center(child: Text(location)),
+          ),
+        ),
+        Positioned(
+          top: 10,
+          left: 10,
+          child: Text(
+            location,
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+        Positioned(
+            left: MediaQuery.of(context).size.width / 4,
+            right: -MediaQuery.of(context).size.width / 4,
+            top: MediaQuery.of(context).size.height * 3 / 8 -
+                MediaQuery.of(context).size.width / 2,
+            child: Image.asset('images/rider_silhouette.png')),
+        Positioned(
+          left: 0,
+          bottom: 0,
+          child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: Center(
+                  child: Text(
+                      '${(speedKmPerSec * 60 * 60).toStringAsFixed(2)} km/h',
+                      style: const TextStyle(color: Colors.white)))),
+        )
+      ],
+    );
   }
 }
 
@@ -270,7 +339,13 @@ class ControlPanel extends StatelessWidget {
           child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                  onPressed: controller.run, child: const Text('走る'))),
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: controller.run,
+                  child: const Text('走る'))),
         )),
         Expanded(
             child: Padding(
@@ -278,13 +353,24 @@ class ControlPanel extends StatelessWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                      onPressed: controller.rest, child: const Text('休む')),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: controller.rest,
+                      child: const Text('休む')),
                 ))),
         Padding(
             padding: const EdgeInsets.all(5),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                   onPressed: () {
                     Navigator.of(context).pushReplacement(MaterialPageRoute(
                         builder: (context) => const StartPage()));

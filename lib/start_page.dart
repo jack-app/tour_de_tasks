@@ -151,6 +151,7 @@ class _CitySelectorState extends State<CitySelector> {
           controller: controller,
           children: [
             for (var i = 0; i < app.cities.length; i++)
+              // <ここを画像に>
               Container(
                 color: provideColor(i),
                 child: Center(
@@ -158,6 +159,7 @@ class _CitySelectorState extends State<CitySelector> {
                       style: const TextStyle(fontSize: 30)),
                 ),
               ),
+            // </ここを画像に>
           ],
         ));
   }
