@@ -3,11 +3,11 @@ import 'dart:ui';
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
-import 'start_page.dart';
-import 'main_page.dart';
-import 'goal_page.dart';
-import 'user_data.dart';
-import 'app_data.dart' as app;
+import 'package:tour_de_tasks/start_page.dart';
+import 'package:tour_de_tasks/main_page.dart';
+import 'package:tour_de_tasks/goal_page.dart';
+import 'package:tour_de_tasks/user_data.dart';
+import 'package:tour_de_tasks/app_data.dart' as app;
 
 void main() {
   runApp(const MainApp());

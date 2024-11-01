@@ -9,19 +9,23 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart' as sqflite_ffi_web;
 // 用法はここに https://pub.dev/packages/sqflite
 //            https://github.com/tekartik/sqflite/blob/master/sqflite_common_ffi/doc/using_ffi_instead_of_sqflite.md
 //            https://pub.dev/packages/sqflite_common_ffi_web
-import 'app_data.dart';
+import 'package:tour_de_tasks/app_data.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class UserData {
-  UserData._internal();
+  UserData._internal() {
+    developer.log('instance created', name: 'UserData');
+  }
   SharedPreferencesWithCache? prefs;
 
   bool prepared = false;
 
   // シングルトンにするためのファクトリコンストラクタ
   static final UserData _instance = UserData._internal();
-  factory UserData() => _instance;
+  factory UserData() {
+    return _instance;
+  }
 
   // userDataにアクセスする前に必ず呼び出す初期化関数
   Future<void> prepare() async {

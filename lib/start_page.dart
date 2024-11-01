@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'main_page.dart';
-import 'app_data.dart' as app;
-import 'user_data.dart';
+import 'package:tour_de_tasks/main_page.dart';
+import 'package:tour_de_tasks/app_data.dart' as app;
+import 'package:tour_de_tasks/user_data.dart';
 
 // Widgetの設定（ステートに依存しない）を行う．
 // sample.dartを参考にすると良い

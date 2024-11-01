@@ -3,9 +3,10 @@ import 'dart:math';
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
-import 'goal_page.dart';
-import 'user_data.dart';
-import 'app_data.dart' as app;
+import 'package:tour_de_tasks/start_page.dart';
+import 'package:tour_de_tasks/goal_page.dart';
+import 'package:tour_de_tasks/user_data.dart';
+import 'package:tour_de_tasks/app_data.dart' as app;
 
 // 速度は次の連続走行時間の関数で規定する
 // v( t[sec] ) = initialSpeedKmPerSec + (maxSpeedKmPerSec - initialSpeedKmPerSec) * (1 - exp(-t / 60))
@@ -19,16 +20,13 @@ import 'app_data.dart' as app;
 // このクラスのインスタンスをwidget間でリレーさせて，包括的な操作を用意にする
 class MainPageController {
   // <private>
-  final LapRepository _lapRepo = LapRepository();
-  final UserData _userData = UserData();
-
   MainPageController._internal();
 
   factory MainPageController() {
     // 中断からの復帰で状況を復元する
     developer.log('controller required', name: 'mainPageController');
     final MainPageController controller = MainPageController._internal();
-    if (controller._userData.running) {
+    if (UserData().running) {
       controller._startTimer();
     } else {
       controller._stopTimer();
@@ -76,7 +74,7 @@ class MainPageController {
 
   // <public>
   Future<int> getKeepRunningTimeInSec({Lap? lastLap}) async {
-    var lap = lastLap ?? await _lapRepo.getLast();
+    var lap = lastLap ?? await LapRepository().getLast();
     if (lap == null || lap.act == 'rest') {
       return 0;
     } else {
@@ -104,15 +102,15 @@ class MainPageController {
   }
 
   Future<double> calcPassedDistanceKm() async {
-    var lap = await _lapRepo.getLast();
+    var lap = await LapRepository().getLast();
     if (lap == null) {
       return 0.0;
     } else if (lap.act == 'rest') {
-      return _userData.confPassedDistanceKm;
+      return UserData().confPassedDistanceKm;
     } else if (lap.act == 'run') {
       final passedDistanceKm =
           await calcPassedDistanceKmFromLastRest(lastLap: lap);
-      return _userData.confPassedDistanceKm + passedDistanceKm;
+      return UserData().confPassedDistanceKm + passedDistanceKm;
     } else {
       throw Exception('Invalid act');
     }
@@ -120,7 +118,7 @@ class MainPageController {
 
   Future<double> calcRemainingDistanceKm() async {
     final passedDistanceKm = await calcPassedDistanceKm();
-    return max(0, _userData.goalDistanceKm - passedDistanceKm);
+    return max(0, UserData().goalDistanceKm - passedDistanceKm);
   }
 
   Future<String> calcLocation() async {
@@ -133,28 +131,28 @@ class MainPageController {
 
   Future<double> calcProgress() async {
     final passedDistanceKm = await calcPassedDistanceKm();
-    return passedDistanceKm / _userData.goalDistanceKm;
+    return passedDistanceKm / UserData().goalDistanceKm;
   }
 
   void rest() {
-    if (!_userData.running) {
+    if (!UserData().running) {
       return;
     }
-    _userData.running = false;
+    UserData().running = false;
     calcPassedDistanceKm().then((distanceKm) {
-      _userData.confPassedDistanceKm = distanceKm;
-      _lapRepo.rest();
+      UserData().confPassedDistanceKm = distanceKm;
+      LapRepository().rest();
     });
     // 必要があればスライドショーなどの更新をここでする
     _stopTimer();
   }
 
   void run() {
-    if (_userData.running) {
+    if (UserData().running) {
       return;
     }
-    _lapRepo.run();
-    _userData.running = true;
+    LapRepository().run();
+    UserData().running = true;
     // 必要があればスライドショーなどの更新をここでする
     _startTimer();
   }
@@ -208,15 +206,12 @@ class _MainPageState extends State<MainPage> {
         ),
         body: Column(
           children: <Widget>[
-            SlideShow(controller: controller),
-            ControlPanel(controller: controller),
-            ElevatedButton(
-                onPressed: () {
-                  // ページ遷移はこんな感じ
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const GoalPage()));
-                },
-                child: const Text('遷移')),
+            Expanded(
+              child: SlideShow(controller: controller),
+            ),
+            Expanded(
+              child: ControlPanel(controller: controller),
+            )
           ],
         ));
   }
@@ -267,11 +262,36 @@ class ControlPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     // 仮なのでどう書き換えても良い
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         Center(child: ProgressBar(controller: controller)),
-        ElevatedButton(onPressed: controller.run, child: const Text('Run')),
-        ElevatedButton(onPressed: controller.rest, child: const Text('Rest')),
+        Expanded(
+            child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                  onPressed: controller.run, child: const Text('走る'))),
+        )),
+        Expanded(
+            child: Padding(
+                padding: const EdgeInsets.all(5),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      onPressed: controller.rest, child: const Text('休む')),
+                ))),
+        Padding(
+            padding: const EdgeInsets.all(5),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const StartPage()));
+                  },
+                  child: const Text('リセット')),
+            )),
       ],
     );
   }
@@ -338,7 +358,7 @@ class _ProgressBarState extends State<ProgressBar> {
         progress > 0.7 ? null : padding + width * progress + iconSize;
     var textLeft =
         progress > 0.7 ? padding + width * (1 - progress) + iconSize : null;
-    developer.log(padding.toString(), name: 'padding');
+
     widget.controller._updateProgressBar!();
     return Container(
         width: double.infinity,

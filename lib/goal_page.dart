@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'start_page.dart';
-import 'user_data.dart';
-import 'app_data.dart' as app;
+import 'package:tour_de_tasks/start_page.dart';
+import 'package:tour_de_tasks/user_data.dart';
+import 'package:tour_de_tasks/app_data.dart' as app;
 
 // Widgetの設定（ステートに依存しない）を行う．
 // sample.dartを参考にすると良い
@@ -25,28 +25,21 @@ class _GoalPageState extends State<GoalPage> {
     // ここでwidgetを組み合わせる
     // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Goal Page'),
-      ),
-      body: Column(
-        children: <Widget>[
-          const Text('ゴールページ'),
-          ElevatedButton(
-            onPressed: () {
-              // ページ遷移はこんな感じ
-              Navigator
-              .of(context)
-              .pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => const StartPage()
-                )
-              );
-            }, 
-            child: const Text('遷移')
-          ),
-        ],
-      )
-    );
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Goal Page'),
+        ),
+        body: Column(
+          children: <Widget>[
+            const Text('ゴールページ'),
+            ElevatedButton(
+                onPressed: () {
+                  // ページ遷移はこんな感じ
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
+                      builder: (context) => const StartPage()));
+                },
+                child: const Text('遷移')),
+          ],
+        ));
   }
 }
