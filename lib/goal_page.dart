@@ -20,10 +20,20 @@ class _GoalPageState extends State<GoalPage> {
     UserData().page = app.Page.goal;
   }
 
+  Future<double> calcPassedTimeFromStartInDays() async {
+    LapRepository laps = LapRepository();
+    Lap? first = await laps.getFirst();
+    Lap? last = await laps.getLast();
+    if (first == null || last == null) {
+      return 0.0;
+    }
+    int passedTimeInEpoch = last.whenEpochSec - first.whenEpochSec;
+    double passedTimeInDays = passedTimeInEpoch / (60 * 60 * 24);
+    return passedTimeInDays;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ここでwidgetを組み合わせる
-    // 以下の記述は動作テスト用のものなので残す必要はない
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -31,14 +41,46 @@ class _GoalPageState extends State<GoalPage> {
         ),
         body: Column(
           children: <Widget>[
-            const Text('ゴールページ'),
-            ElevatedButton(
-                onPressed: () {
-                  // ページ遷移はこんな感じ
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const StartPage()));
-                },
-                child: const Text('遷移')),
+            const Text('Congratulation!', style: TextStyle(fontSize: 30)),
+            const Expanded(
+              child: ColoredBox(
+                color: Colors.redAccent,
+                child: Center(
+                  child: Text('Paris', style: TextStyle(fontSize: 30)),
+                ),
+              ),
+            ),
+            Text(
+                '${UserData().startCity} から ${UserData().goalDistanceKm} km を完走しました！',
+                style: const TextStyle(fontSize: 20)),
+            FutureBuilder(
+                future: calcPassedTimeFromStartInDays(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Text(
+                        '所要日数は ${snapshot.data!.toStringAsPrecision(4)} 日でした！',
+                        style: const TextStyle(fontSize: 20));
+                  } else {
+                    return const Text('所要日数は  日でした!',
+                        style: TextStyle(fontSize: 20));
+                  }
+                }),
+            Expanded(
+              child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pushReplacement(MaterialPageRoute(
+                            builder: (context) => const StartPage()));
+                      },
+                      child:
+                          const Text('終了する', style: TextStyle(fontSize: 30)))),
+            ),
           ],
         ));
   }
